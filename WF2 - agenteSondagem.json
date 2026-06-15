@@ -1,0 +1,440 @@
+{
+  "name": "Sondagem",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "from_id"
+            },
+            {
+              "name": "mensagem"
+            },
+            {
+              "name": "saudacao_correta"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        80,
+        880
+      ],
+      "id": "02fb2709-2fc4-4669-9f84-38c67908e15f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "35e36288-a072-4ac8-a5d3-4a5e6b9ba030",
+              "name": "contexto_formatado",
+              "value": "={{ Array.isArray($json.propertyName) ? $json.propertyName.join('\\n') : 'Início de conversa' }}",
+              "type": "string"
+            },
+            {
+              "id": "aaaa0001-0000-0000-0000-000000000001",
+              "name": "from_id",
+              "value": "={{ $('When Executed by Another Workflow').item.json.from_id }}",
+              "type": "string"
+            },
+            {
+              "id": "aaaa0001-0000-0000-0000-000000000002",
+              "name": "mensagem",
+              "value": "={{ $('When Executed by Another Workflow').item.json.mensagem }}",
+              "type": "string"
+            },
+            {
+              "id": "aaaa0001-0000-0000-0000-000000000003",
+              "name": "saudacao_correta",
+              "value": "={{ $('When Executed by Another Workflow').item.json.saudacao_correta }}",
+              "type": "string"
+            },
+            {
+              "id": "aaaa0001-0000-0000-0000-000000000004",
+              "name": "prompt_sistema",
+              "value": "={{ $('When Executed by Another Workflow').item.json.prompt_sistema }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        880
+      ],
+      "id": "97ddfc4d-c52a-4ae3-9bf8-75c1fe6b785e",
+      "name": "data_mapping_sondagem"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensagem }}",
+        "options": {
+          "systemMessage": "={{ $json.prompt_sistema ? $json.prompt_sistema + '\\n\\n---\\n\\n' : '' }}👤 PERSONA (ROLE)\n\nVocê é o \"Alex\", vendedor experiente da Cultura Inglesa. Comunicação sofisticada, empática e focada em Venda Consultiva. Seja conciso, amigável e resolutivo.\n\nNa primeira interação, identifique-se como Alex, consultor de vendas da Cultura Inglesa.\n\n🎯 OBJETIVO\n\nColetar os dados iniciais do lead de forma natural e conversacional para avançar com o processo de matrícula.\n\nSEQUÊNCIA OBRIGATÓRIA:\n1. Saudar usando: {{ $json.saudacao_correta }}. Perguntar se o curso é para si ou para um dependente.\n2. Sempre usar o nome do cliente assim que souber.\n3. Identificar objetivo: Carreira, Viagem ou Acadêmico.\n4. Identificar nível: Iniciante, Intermediário ou Avançado.\n5. Identificar Unidade de preferência (bairro ou cidade) e Disponibilidade de Horários (Manhã, Tarde, Noite ou Sábados). Pode perguntar os dois na mesma mensagem.\n6. Solicitar Nome Completo, CPF, E-MAIL e Endereco. Pode solicitar em blocos naturais.\n\n\n\n📝 ESTILO DE RESPOSTA\n- Seja natural como um vendedor humano no WhatsApp.\n- Pode fazer 2 perguntas curtas na mesma mensagem quando for natural (ex: unidade + horário juntos).\n- Mensagens curtas e diretas. Máximo 2 parágrafos por resposta.\n- Nunca mande listas longas ou parágrafos gigantes.\n\n🛠️ FERRAMENTAS\n- salvar_progresso: após coletar TODOS os dados, salvar em JSON.\n- atualizar_fase: chamar SOMENTE depois de salvar_progresso, para atualizar para PITCH.\n- retornar_sede: chamar SOMENTE quando o lead informar um bairro ou cidade específica.\n- retorno_mensagem: chamar SOMENTE se o lead usar palavras como \"não posso agora\", \"estou ocupado\", \"me liga depois\", \"continua amanhã\" ou similar. NUNCA chamar se o lead estiver respondendo normalmente sobre horários de aula ou disponibilidade para estudar.\n\n⚠️ REGRAS CRÍTICAS\n- retorno_mensagem é para REMARCAR O ATENDIMENTO, não para horários de aula. Se o lead disser \"prefiro estudar à noite\", isso é disponibilidade de horário de aula — continue normalmente.\n- MENORES DE 18 ANOS: solicitar Nome e CPF do Responsável Financeiro obrigatoriamente.\n- UNIDADES: use apenas unidades confirmadas pela ferramenta retornar_sede. Nunca invente.\n- BLINDAGEM DE PREÇO: se perguntar preço, responda: \"Para te passar o valor exato, preciso confirmar a disponibilidade de vaga na sua unidade. Qual bairro fica melhor pra você?\"\nE-MAIL OBRIGATORIO: o link de pagamento sera enviado para o e-mail. Nunca avance\npara PITCH sem um e-mail valido (com @ e dominio). Salve como \"Email_do_aluno\"\n\n⚠️ REGRA DE TRANSIÇÃO (OBRIGATÓRIA):\nQuando você chamar atualizar_fase, sua ÚNICA mensagem permitida é exatamente esta, sem adicionar nada:\n\n\"Perfeito, [Nome]! Já tenho tudo que preciso. \\nAgora vou te mostrar o curso ideal para o seu objetivo! 🎯\"\n\nPROIBIDO após chamar atualizar_fase:\n- Perguntar horário de ligação ou retorno\n- Dizer que vai entrar em contato\n- Fazer qualquer outra pergunta\n- Adicionar qualquer texto além da frase acima\n\n[DADOS A COLETAR]\n- Nome_do_aluno, CPF_do_Aluno, Endereco_do_aluno, Email_do_aluno\n- Unidade, Nivel_Academico, Motivacao, Disponibilidade_Horario\n- CPF_do_Responsavel (se aplicável)"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1296,
+        880
+      ],
+      "id": "1f99dd21-81fd-4054-8ab0-7ddd72743387",
+      "name": "Sondagem"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        1344
+      ],
+      "id": "849ea5af-0b01-4c32-987a-5822a9577583",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "elrp59wUhqssTKXt",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.from_id }}",
+        "sessionTTL": 86400,
+        "contextWindowLength": 50
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        1248,
+        1360
+      ],
+      "id": "8ef0f705-72bf-4317-b059-89c6e5e58f42",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use esta ferramenta para salvar informações coletadas (Nome, CPF, Unidade, etc) no perfil do aluno. Envie os dados no formato JSON.",
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET metadados = metadados || $1::jsonb WHERE from_id = $2;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('dados_json', 'JSON com os dados coletados do aluno', 'string') }}, {{ $('When Executed by Another Workflow').item.json.from_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1744,
+        1344
+      ],
+      "id": "328d8782-109c-49ae-8973-6d1f01c872e4",
+      "name": "salvar_progresso",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use esta ferramenta apenas para atualizar a fase do lead. Chame SOMENTE depois de usar salvar_progresso. Informe a nova_fase como PITCH.",
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET fase_atual = $1 WHERE from_id = $2 RETURNING 'TRANSICAO_CONCLUIDA. Agora gere APENAS a seguinte mensagem, sem adicionar nada mais: \"Perfeito! Já tenho tudo que preciso. Agora vou te mostrar o curso ideal para o seu objetivo! 🎯\"' AS resultado;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nova_fase', 'Nova fase do lead. Use PITCH para avançar.', 'string') }}, {{ $('When Executed by Another Workflow').item.json.from_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1408,
+        1344
+      ],
+      "id": "c4135b80-883a-4cde-a867-133f9d78f5ed",
+      "name": "atualizar_fase",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "ESTA FERRAMENTA SÓ PODE SER CHAMADA SE o usuário informou um BAIRRO ou CIDADE. Se o usuário NÃO informou um local, você está PROIBIDO de chamá-la. Pergunte o bairro antes.",
+        "operation": "executeQuery",
+        "query": "SELECT id, nome_exibicao, codigo_ps_unidade FROM unidades WHERE nome_exibicao ILIKE '%' || $1 || '%' LIMIT 5;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('termo_busca', 'Bairro ou cidade informada pelo lead', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        1344
+      ],
+      "id": "6daf0b22-d3d8-4513-b5cf-f999513dfee2",
+      "name": "retornar_sede",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Chame esta ferramenta SOMENTE quando o lead pedir para continuar a conversa em outro dia ou horário. PROIBIDO confirmar agendamento no texto sem chamar esta ferramenta primeiro. Pergunte o melhor dia e horário antes de disparar.",
+        "workflowId": {
+          "__rl": true,
+          "value": "-unQxjz7MExVTGkyd1okZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/-unQxjz7MExVTGkyd1okZ",
+          "cachedResultName": "Retorno_mensagem"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "whatsapp": "={{ $('When Executed by Another Workflow').item.json.from_id }}",
+            "fase_atual": "sondagem",
+            "fase_atendimento": "sondagem",
+            "contexto_resumido": "={{ $('data_mapping_sondagem').item.json.contexto_formatado }}",
+            "status": "pendente",
+            "data_retorno": "={{ $fromAI('data_retorno', 'Data e hora do retorno no formato ISO 8601, fuso UTC-3', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "whatsapp",
+              "displayName": "whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "data_retorno",
+              "displayName": "data_retorno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fase_atual",
+              "displayName": "fase_atual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fase_atendimento",
+              "displayName": "fase_atendimento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "contexto_resumido",
+              "displayName": "contexto_resumido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1936,
+        1360
+      ],
+      "id": "cfe1b2f3-6ba4-4f1e-93ae-403c0cf9ef36",
+      "name": "retorno_mensagem"
+    },
+    {
+      "parameters": {
+        "jsCode": "const respostaIA = $input.first().json.output;\nreturn [{ json: { resposta: respostaIA } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1744,
+        880
+      ],
+      "id": "0a2342ee-d5bf-4805-a5c4-c109bd397366",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "data_mapping_sondagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_mapping_sondagem": {
+      "main": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sondagem": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "salvar_progresso": {
+      "ai_tool": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "atualizar_fase": {
+      "ai_tool": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "retornar_sede": {
+      "ai_tool": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "retorno_mensagem": {
+      "ai_tool": [
+        [
+          {
+            "node": "Sondagem",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "80bbbbc5-73aa-4378-84ef-56bc148b23be",
+  "meta": {
+    "instanceId": "356223bedce7f9b4998ba18af3ff2b517ee1c4ed6c25e8004ec95a4c5c5c1f0d"
+  },
+  "id": "CdXDa64U0fHSEHH1oUv29",
+  "tags": [
+    {
+      "updatedAt": "2026-05-20T18:38:39.008Z",
+      "createdAt": "2026-05-20T18:38:39.008Z",
+      "id": "j1kcPWDVGOv0IbkV",
+      "name": "CORRIGIDO"
+    }
+  ]
+}

@@ -1,0 +1,357 @@
+{
+  "name": "Matricula",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "from_id"
+            },
+            {
+              "name": "mensagem"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        2448,
+        528
+      ],
+      "id": "579f5c93-c73e-4739-a116-6819970f6cd4",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, from_id, fase_atual, metadados FROM leads WHERE from_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.from_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2976,
+        528
+      ],
+      "id": "2ec8769b-9ff0-4713-ba19-dde261d87e54",
+      "name": "lead1",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "from_id",
+              "value": "={{ $json.from_id }}",
+              "type": "string"
+            },
+            {
+              "id": "d4",
+              "name": "Nome_do_aluno",
+              "value": "={{ $json.metadados?.Nome_do_aluno ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d5",
+              "name": "CPF_do_aluno",
+              "value": "={{ $json.metadados?.CPF_do_Aluno ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d6",
+              "name": "Endereco_do_aluno",
+              "value": "={{ $json.metadados?.Endereco_do_aluno ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d7",
+              "name": "Unidade",
+              "value": "={{ $json.metadados?.Unidade ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d8",
+              "name": "Nivel_Academico",
+              "value": "={{ $json.metadados?.Nivel_Academico ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d9",
+              "name": "Disponibilidade_Horario",
+              "value": "={{ $json.metadados?.Disponibilidade_Horario ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "d10",
+              "name": "mensagem",
+              "value": "={{ $('When Executed by Another Workflow').item.json.mensagem }}",
+              "type": "string"
+            },
+            {
+              "id": "d11",
+              "name": "Email_do_aluno",
+              "value": "={{ $('lead1').item.json.metadados?.Email_do_aluno ?? '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3344,
+        528
+      ],
+      "id": "92a585a3-9320-4f2f-a996-45ea52f8f1a1",
+      "name": "data_mapping"
+    },
+    {
+      "parameters": {
+        "description": "Use SOMENTE apos o lead confirmar os dados. Registra a matricula (simulada) e retorna o protocolo.",
+        "workflowId": {
+          "__rl": true,
+          "value": "_B324puvw9DUOii40usi8",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/_B324puvw9DUOii40usi8",
+          "cachedResultName": "matricula_simulada"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "from_id": "={{ $('data_mapping').item.json.from_id }}",
+            "Nome_do_aluno": "={{ $('data_mapping').item.json.Nome_do_aluno }}",
+            "Email_do_aluno": "={{ $('data_mapping').item.json.Email_do_aluno }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "from_id",
+              "displayName": "from_id",
+              "required": false,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Nome_do_aluno",
+              "displayName": "Nome_do_aluno",
+              "required": false,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "Email_do_aluno",
+              "displayName": "Email_do_aluno",
+              "required": false,
+              "display": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3968,
+        816
+      ],
+      "id": "ba99a1ee-a5f7-4443-bc4e-2391640714db",
+      "name": "processar_matricula"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensagem }}",
+        "options": {
+          "systemMessage": "=### PERSONA\nVoce e o \"Alex\", consultor da Cultura Inglesa. Tom caloroso, profissional e celebrativo. O aluno acabou de confirmar que quer se matricular.\n\n[DADOS JA COLETADOS]\n- Nome: {{ $json.Nome_do_aluno }}\n- CPF: {{ $json.CPF_do_aluno }}\n- E-mail: {{ $json.Email_do_aluno }}\n- Endereco: {{ $json.Endereco_do_aluno }}\n- Unidade: {{ $json.Unidade }}\n- Nivel: {{ $json.Nivel_Academico }}\n- Horario: {{ $json.Disponibilidade_Horario }}\n\n### COMO A MATRICULA FUNCIONA (LEIA COM ATENCAO)\nA matricula e 100%% digital e feita por voce, aqui, agora. O fluxo e:\n1) Voce confirma os dados com o aluno.\n2) Voce chama a ferramenta processar_matricula, que registra a PRE-MATRICULA e gera um link de pagamento.\n3) Voce informa que o link de pagamento foi enviado para o E-MAIL do aluno.\n4) A matricula so e CONFIRMADA DE VERDADE apos o aluno efetuar o pagamento pelo link.\nO aluno NAO precisa ir a lugar nenhum, NAO precisa de videochamada, NAO precisa fazer mais nada alem de pagar pelo link.\n\n### PROIBICOES ABSOLUTAS (NUNCA FACA ISSO)\n- NUNCA pergunte se o aluno prefere presencial ou online.\n- NUNCA peca para o aluno se dirigir, comparecer ou ir ate uma unidade.\n- NUNCA ofereca opcoes de 'hoje, amanha, outro dia'.\n- NUNCA agende visita ou comparecimento.\n- NUNCA diga que a matricula esta confirmada ANTES do pagamento. Ela fica PENDENTE ate o pagamento.\n- NUNCA prometa enviar e-mail sem que o e-mail tenha sido coletado. Se o campo E-mail acima estiver vazio, peca o e-mail ao aluno ANTES de chamar processar_matricula.\n\n### SEQUENCIA OBRIGATORIA\n1. Apresente um resumo claro dos dados coletados (incluindo o e-mail).\n2. Se o e-mail estiver vazio, peca-o agora.\n3. Pergunte: \"Esta tudo certo? Posso gerar sua matricula e o link de pagamento?\"\n4. Se o aluno confirmar: chame IMEDIATAMENTE a ferramenta processar_matricula. NAO escreva nada antes de chamar.\n5. Se o aluno corrigir algum dado: anote e volte ao passo 1.\n6. Apos processar_matricula retornar: envie a mensagem final abaixo, usando o protocolo e avisando do link no e-mail.\n\n### MENSAGEM FINAL (apos processar_matricula)\n\"💳 Tudo certo, {{ $json.Nome_do_aluno }}! Sua pre-matricula foi registrada (protocolo [PROTOCOLO RETORNADO]).\n\n📧 Acabei de enviar o link de pagamento para o seu e-mail {{ $json.Email_do_aluno }}. Assim que voce concluir o pagamento por ele, sua matricula na Cultura Inglesa estara confirmada e voce recebe os dados de acesso e a data de inicio. Qualquer duvida, e so me chamar! 😊\"\n\n### REGRAS GERAIS\n- NUNCA invente dados ausentes.\n- NUNCA chame processar_matricula sem confirmacao explicita do aluno.\n- Deixe sempre claro que a confirmacao final depende do pagamento."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3712,
+        528
+      ],
+      "id": "01ef0f1d-80c1-472d-a919-383c68d0783f",
+      "name": "Matricula1"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        816
+      ],
+      "id": "df1d59cd-44a1-4f81-966c-459b4a7de37e",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "elrp59wUhqssTKXt",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.from_id }}",
+        "sessionTTL": 86400,
+        "contextWindowLength": 50
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        3776,
+        816
+      ],
+      "id": "ce90b9c1-9fa8-40f1-8ba9-8eaf3a2b330d",
+      "name": "Redis Chat Memory1",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const r=$input.first().json.output;return[{json:{resposta:r}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4352,
+        528
+      ],
+      "id": "ec1f7a08-57a7-4523-9257-d4609aae0d9f",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "from_id": "5511932510931@s.whatsapp.net",
+          "mensagem": "fechou, quero me matricular"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "lead1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lead1": {
+      "main": [
+        [
+          {
+            "node": "data_mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_mapping": {
+      "main": [
+        [
+          {
+            "node": "Matricula1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "processar_matricula": {
+      "ai_tool": [
+        [
+          {
+            "node": "Matricula1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matricula1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Matricula1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Matricula1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "084f89a8-31fb-4040-b0b3-afdf6cc68023",
+  "meta": {
+    "instanceId": "356223bedce7f9b4998ba18af3ff2b517ee1c4ed6c25e8004ec95a4c5c5c1f0d"
+  },
+  "id": "DLSPIp9aEVKDLJDQj1smT",
+  "tags": [
+    {
+      "updatedAt": "2026-05-20T18:38:39.008Z",
+      "createdAt": "2026-05-20T18:38:39.008Z",
+      "id": "j1kcPWDVGOv0IbkV",
+      "name": "CORRIGIDO"
+    }
+  ]
+}

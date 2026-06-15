@@ -1,0 +1,685 @@
+{
+  "name": "Retorno_mensagem",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "whatsapp"
+            },
+            {
+              "name": "mensagem"
+            },
+            {
+              "name": "fase_atual"
+            },
+            {
+              "name": "fase_atendimento"
+            },
+            {
+              "name": "contexto_resumido"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -464,
+        512
+      ],
+      "id": "e46092a4-7b87-498a-a1b4-e55d13392890",
+      "name": "When Executed by Another Workflow",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensagem }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Hoje é {{ $now.setZone('America/Sao_Paulo').toFormat('yyyy-MM-dd HH:mm') }} (horário de Brasília, UTC-3).\n\nAnalise a mensagem e extraia qualquer data e/ou horário mencionado, mesmo com erros de digitação.\n\nIMPORTANTE: O formato de data usado no Brasil é DD/MM/AAAA (dia/mês/ano).\nExemplos: '09/06/2026' = dia 9 de junho de 2026. '06/09/2026' = dia 6 de setembro de 2026.\nNUNCA interprete o primeiro número como mês — no Brasil o primeiro número é sempre o DIA.\n\nSE encontrar algo que pareça uma data ou horário, retorne SOMENTE:\n{\"tem_data\": true, \"data_formatada\": \"YYYY-MM-DD HH:MM:SS\"}\n\nRegras de interpretação:\n- Seja TOLERANTE com erros de digitação: 'aás', 'as', 'às', 'a', 'ás' antes de horário = todos significam horário\n- Formato brasileiro: DD/MM/AAAA — o primeiro número é sempre o DIA\n- '09/06/2026 as 14:10' = dia 9 de junho de 2026 às 14:10\n- 'amanhã' = dia seguinte a hoje\n- 'semana que vem' sem dia = próxima segunda-feira\n- Sem hora → 09:00:00\n- 'de manhã' / 'manhã' → 09:00:00\n- 'à tarde' / 'tarde' → 14:00:00\n- 'à noite' / 'noite' → 19:00:00\n- Ano omitido → use o ano atual\n\nSE absolutamente não houver nenhuma referência a data ou hora, retorne SOMENTE:\n{\"tem_data\": false}\n\nSem explicação, sem markdown, apenas o JSON puro."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -224,
+        512
+      ],
+      "id": "bf114312-7186-433f-bb33-27d959e9a536",
+      "name": "detectar_data"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        672
+      ],
+      "id": "9afc67c9-2714-4a72-a5a7-2944e5378f79",
+      "name": "Groq detectar_data",
+      "credentials": {
+        "groqApi": {
+          "id": "2ZnlLUNzDP1VthYv",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = ($json.text || $json.output || '').trim().replace(/```json|```/g, '').trim();\nconst input = $('When Executed by Another Workflow').item.json;\n\nlet tem_data = false;\nlet data_local = null;\nlet data_legivel = null;\n\ntry {\n  const parsed = JSON.parse(raw);\n  tem_data = parsed.tem_data === true;\n\n  if (tem_data && parsed.data_formatada) {\n    data_local = parsed.data_formatada; // ex: \"2026-06-09 14:10:00\" em horário de Brasília\n    const partes = parsed.data_formatada.split(' ');\n    const [ano, mes, dia] = partes[0].split('-');\n    const hora = partes[1] ? partes[1].substring(0, 5) : '09:00';\n    data_legivel = `${dia}/${mes}/${ano} às ${hora}`;\n  }\n} catch(e) {}\n\nreturn [{ json: { ...input, tem_data, data_local, data_legivel } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        512
+      ],
+      "id": "a952fac1-4095-4d58-be7b-723eb7da6fdc",
+      "name": "parsear_data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "86c3fdc5-ef74-4634-8457-c1482bde676e",
+              "leftValue": "={{ $json.tem_data }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        256,
+        512
+      ],
+      "id": "644a388b-70d4-48a0-812d-04bdd63f20bf",
+      "name": "tem_data?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO remarcacoes (whatsapp, data_retorno, fase_atual, fase_atendimento, contexto_resumido, status)\nVALUES (\n  $1,\n  ($2::timestamp AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'UTC',\n  $3,\n  $4,\n  $5,\n  'pendente'\n);",
+        "options": {
+          "queryReplacement": "={{ $json.whatsapp }}, {{ $json.data_local }}, {{ $json.fase_atendimento }}, {{ $json.fase_atendimento }}, {{ $json.contexto_resumido }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        496,
+        384
+      ],
+      "id": "8474ba5f-008d-4b07-ba39-c21b2b0399dd",
+      "name": "insert_remarcacao",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET fase_atual = $1 WHERE from_id = $2;",
+        "options": {
+          "queryReplacement": "={{ $('parsear_data').item.json.whatsapp }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        736,
+        384
+      ],
+      "id": "5c2ccf94-3a47-44ee-ade2-478b6640ed11",
+      "name": "restaurar_fase",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f8cb4f41-39df-4f5c-9b0b-7fc83344eb3e",
+              "name": "resposta",
+              "value": "=Perfeito! 😊 Retorno agendado para *{{ $('parsear_data').item.json.data_legivel }}*. Até lá!",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        384
+      ],
+      "id": "1cb9ebed-445d-4127-ba08-6d851515231d",
+      "name": "resposta_confirmado"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET fase_anterior = fase_atual, fase_atual = 'agendamento' WHERE from_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.whatsapp }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        496,
+        624
+      ],
+      "id": "5fc97a96-01aa-4bbd-bd32-41a1420b4d79",
+      "name": "gravar_fase_agendamento",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "431bb002-7f2b-4b1a-bb67-b721b1e78bb2",
+              "name": "resposta",
+              "value": "Claro! 😊 Qual dia e horário ficaria melhor para você?\n\nMe informe no formato: *DD/MM/AAAA às HH:MM*\nExemplo: *09/06/2026 às 14:10*",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        736,
+        624
+      ],
+      "id": "aa93e246-d98e-4728-a028-a23600609d5b",
+      "name": "pedir_data"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -464,
+        1104
+      ],
+      "id": "4d2182bb-467d-446e-89ad-ceb911a74c79",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM remarcacoes WHERE status = 'pendente' AND data_retorno <= NOW();",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -128,
+        1104
+      ],
+      "id": "7eeb91a4-41cd-45ad-a513-b4a6a963550a",
+      "name": "selecionar_leads_pendentes",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2740ae17-aad0-4ac4-af75-a1caa771efa4",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        160,
+        1104
+      ],
+      "id": "0f1cb37a-2404-4aa4-bb35-daa8b234921f",
+      "name": "existe_lead?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-go:8080/send/text/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "fdd664d7-b142-43dd-8ce3-dff8b32128af"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"delay\": 1000,\n  \"number\": \"{{ $json.whatsapp }}\",\n  \"text\": \"Oi! Conforme combinamos, estou passando para continuarmos nosso contato. Como posso te ajudar?\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        496,
+        944
+      ],
+      "id": "98383fee-48d7-4f31-ac61-39dc6ebbb06e",
+      "name": "enviar_mensagem_lead"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET fase_atual = fase_anterior WHERE from_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $('selecionar_leads_pendentes').item.json.whatsapp }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        736,
+        944
+      ],
+      "id": "e59f7a99-f6a8-4fa1-b163-cf8a53b57968",
+      "name": "restaurar_fase_lead",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "interacoes",
+          "mode": "list",
+          "cachedResultName": "interacoes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "mensagem_usuario": "={{ $('selecionar_leads_pendentes').item.json.contexto_resumido }}",
+            "fase_no_momento": "={{ $('selecionar_leads_pendentes').item.json.fase_atendimento }}",
+            "data_interacao": "={{ $now }}",
+            "resposta_ia": "SISTEMA: Retomada Automática"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "lead_id",
+              "displayName": "lead_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "mensagem_usuario",
+              "displayName": "mensagem_usuario",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "resposta_ia",
+              "displayName": "resposta_ia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fase_no_momento",
+              "displayName": "fase_no_momento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "data_interacao",
+              "displayName": "data_interacao",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        976,
+        944
+      ],
+      "id": "57624da5-0f14-439f-9a24-7e48f5aa5ddf",
+      "name": "salvar_interacao",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE remarcacoes SET status = 'concluido' WHERE id = $1;",
+        "options": {
+          "queryReplacement": "={{ $('selecionar_leads_pendentes').item.json.id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1216,
+        944
+      ],
+      "id": "f4e4d766-3f39-4188-a3a6-f45d14bcff5d",
+      "name": "update_status",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        496,
+        1264
+      ],
+      "id": "3b4994b7-bb2c-46cc-9dfc-908bcce37510",
+      "name": "No Operation, do nothing"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "detectar_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq detectar_data": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "detectar_data",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "detectar_data": {
+      "main": [
+        [
+          {
+            "node": "parsear_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parsear_data": {
+      "main": [
+        [
+          {
+            "node": "tem_data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tem_data?": {
+      "main": [
+        [
+          {
+            "node": "insert_remarcacao",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "gravar_fase_agendamento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "insert_remarcacao": {
+      "main": [
+        [
+          {
+            "node": "restaurar_fase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "restaurar_fase": {
+      "main": [
+        [
+          {
+            "node": "resposta_confirmado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gravar_fase_agendamento": {
+      "main": [
+        [
+          {
+            "node": "pedir_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "selecionar_leads_pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "selecionar_leads_pendentes": {
+      "main": [
+        [
+          {
+            "node": "existe_lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "existe_lead?": {
+      "main": [
+        [
+          {
+            "node": "enviar_mensagem_lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_mensagem_lead": {
+      "main": [
+        [
+          {
+            "node": "restaurar_fase_lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "restaurar_fase_lead": {
+      "main": [
+        [
+          {
+            "node": "salvar_interacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "salvar_interacao": {
+      "main": [
+        [
+          {
+            "node": "update_status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "50406145-9265-4d97-b62e-1fde025b3a89",
+  "meta": {
+    "instanceId": "356223bedce7f9b4998ba18af3ff2b517ee1c4ed6c25e8004ec95a4c5c5c1f0d"
+  },
+  "id": "-unQxjz7MExVTGkyd1okZ",
+  "tags": []
+}

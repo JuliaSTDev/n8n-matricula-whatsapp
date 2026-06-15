@@ -1,0 +1,1612 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-whasapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -8800,
+        -1200
+      ],
+      "id": "4701915e-992a-4753-bd3b-dcfc2c34024c",
+      "name": "WhatsApp",
+      "webhookId": "0b547200-0065-438e-91ab-d0f3a4a118db"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.data.Info.Type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "texto"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c2",
+                    "leftValue": "={{ $json.body.data.Info.Type }}",
+                    "rightValue": "media",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -8496,
+        -1200
+      ],
+      "id": "25ed61ee-1812-4981-a6ed-e07af4b5857d",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "mensagem",
+              "value": "={{ $json.body.data.Message.conversation }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7520,
+        -1216
+      ],
+      "id": "7f6ebf82-8785-4a26-a492-88f67d64dd4f",
+      "name": "msg_texto"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "body.data.Message.base64",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -8256,
+        -800
+      ],
+      "id": "9b23d8c3-c609-42e3-ae43-301c6233de25",
+      "name": "converter_audio"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -7904,
+        -800
+      ],
+      "id": "a5e5ab65-885e-4a8b-ab9d-b3cd85e9c749",
+      "name": "transcrever_audio",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LK4OwVqTJy9STd39",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a2",
+              "name": "mensagem",
+              "value": "={{ $json.content?.parts?.[0]?.text ?? '[audio nao transcrito]' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -7504,
+        -800
+      ],
+      "id": "db5bc373-304f-4961-81ac-3dff9eae437d",
+      "name": "msg_audio"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -6992,
+        -1024
+      ],
+      "id": "5b214624-a519-441d-ae5b-0af7f09ba98e",
+      "name": "Merge",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "=buffer_{{ $('WhatsApp').item.json.body.data.Info.Chat }}",
+        "messageData": "={{ $json.mensagem ?? '' }}",
+        "tail": true
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -6768,
+        -1024
+      ],
+      "id": "a1be42d0-803c-4a8f-bb56-d43814c4d820",
+      "name": "addBuffer",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=buffer_{{ $('WhatsApp').item.json.body.data.Info.Chat }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -6560,
+        -1024
+      ],
+      "id": "ab431d06-1207-4a81-8a06-fa166fcf8d06",
+      "name": "getBuffer",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 15
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -6352,
+        -1024
+      ],
+      "id": "4a037996-364b-4344-9907-92dfd643c2b2",
+      "name": "Wait",
+      "webhookId": "b2b34ef6-d01c-45f8-add2-4c6a52dd82f9"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=buffer_{{ $('WhatsApp').item.json.body.data.Info.Chat }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -6144,
+        -1024
+      ],
+      "id": "f172a2f8-9a51-4625-aa94-5ea2f439644d",
+      "name": "getBuffer4",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "if1",
+              "leftValue": "={{ $json.propertyName?.last() ?? '' }}",
+              "rightValue": "={{ $('getBuffer').item.json.propertyName?.last() ?? '' }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -5936,
+        -1024
+      ],
+      "id": "52ab4167-b124-4378-bad9-0b61d9773ca4",
+      "name": "If"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -5504,
+        -672
+      ],
+      "id": "1a0bce23-f02b-4696-9dc2-968b4d55252c",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "=buffer_{{ $('WhatsApp').item.json.body.data.Info.Chat }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -5632,
+        -1040
+      ],
+      "id": "1aac56d9-f485-4143-8ddb-79b127a7f8ba",
+      "name": "deleteBuffer",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a3",
+              "name": "mensagem",
+              "value": "={{ $json.propertyName.join('\\n\\n') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -5360,
+        -1040
+      ],
+      "id": "3cbfea80-67c2-4706-9809-d25b58dcb774",
+      "name": "mensagemFinal"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, from_id, fase_atual FROM leads WHERE from_id LIKE '%' || $1 || '%' LIMIT 1;",
+        "options": {
+          "queryReplacement": "={{ $('WhatsApp').item.json.body.data.Info.Sender }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -5040,
+        -1040
+      ],
+      "id": "99054e11-153f-47bf-a069-0bc290150aec",
+      "name": "Fase_Atual",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "le1",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": false
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -4512,
+        -1040
+      ],
+      "id": "ae445b39-6005-4d7c-88b1-2a10942cc78e",
+      "name": "Lead Existe?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM leads WHERE from_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.from_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3808,
+        -1392
+      ],
+      "id": "3b4261c6-00e7-480e-ac4f-44d2524d5037",
+      "name": "Fase_Atual4",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO leads (from_id, fase_atual, metadados) VALUES ($1, 'sondagem', '{}'::jsonb) RETURNING id, from_id, fase_atual;",
+        "options": {
+          "queryReplacement": "={{ $('WhatsApp').item.json.body.data.Info.Sender }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -3840,
+        -848
+      ],
+      "id": "30ff6d58-5cc0-4b8b-93f8-64b8db44cd4a",
+      "name": "Inserir lead novo",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $('Fase_Atual4').item.json.fase_atual + '_' + $('Lead Existe?').item.json.from_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -3408,
+        -1392
+      ],
+      "id": "a51e5fe6-27aa-4719-8ae5-9eff96cad5a7",
+      "name": "contexo",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agora=new Date();const f=-3;const h=agora.getUTCHours()+f;const hf=h<0?h+24:h;const dia=agora.toISOString().split('T')[0];let s='';if(hf>=5&&hf<12)s='Bom dia';else if(hf>=12&&hf<19)s='Boa tarde';else s='Boa noite';return{data_referencia:dia,hora_referencia:`${hf}:00`,saudacao_correta:s,timestamp_agora:agora.toISOString()};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3056,
+        -1392
+      ],
+      "id": "fc01fe69-1628-466f-94c2-a0572a7eb7f7",
+      "name": "data_hora"
+    },
+    {
+      "parameters": {
+        "jsCode": "const agora=new Date();const f=-3;const h=agora.getUTCHours()+f;const hf=h<0?h+24:h;const dia=agora.toISOString().split('T')[0];let s='';if(hf>=5&&hf<12)s='Bom dia';else if(hf>=12&&hf<19)s='Boa tarde';else s='Boa noite';return{data_referencia:dia,hora_referencia:`${hf}:00`,saudacao_correta:s,timestamp_agora:agora.toISOString()};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -3408,
+        -848
+      ],
+      "id": "81785654-8935-45cd-9ee3-16b30cde28b6",
+      "name": "data_hora4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "m1",
+              "name": "fase_atual",
+              "value": "={{ $('Fase_Atual4').item.json.fase_atual }}",
+              "type": "string"
+            },
+            {
+              "id": "m2",
+              "name": "from_id",
+              "value": "={{ $('Fase_Atual4').item.json.from_id }}",
+              "type": "string"
+            },
+            {
+              "id": "m3",
+              "name": "contexto",
+              "value": "={{ Array.isArray($('contexo').item.json.propertyName) ? $('contexo').item.json.propertyName.join('\\n') : 'Inicio de conversa' }}",
+              "type": "string"
+            },
+            {
+              "id": "m4",
+              "name": "saudacao_correta",
+              "value": "={{ $json.saudacao_correta }}",
+              "type": "string"
+            },
+            {
+              "id": "m5",
+              "name": "mensagem",
+              "value": "={{ $('mensagemFinal').item.json.mensagem }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2624,
+        -1392
+      ],
+      "id": "23f1c928-eeda-415c-9e6d-2c158ab7fe93",
+      "name": "data_mapping_lead"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "n1",
+              "name": "fase_atual",
+              "value": "sondagem",
+              "type": "string"
+            },
+            {
+              "id": "n2",
+              "name": "from_id",
+              "value": "={{ $('Inserir lead novo').item.json.from_id }}",
+              "type": "string"
+            },
+            {
+              "id": "n3",
+              "name": "contexto",
+              "value": "Inicio de conversa com novo lead",
+              "type": "string"
+            },
+            {
+              "id": "n4",
+              "name": "saudacao_correta",
+              "value": "={{ $json.saudacao_correta }}",
+              "type": "string"
+            },
+            {
+              "id": "n5",
+              "name": "mensagem",
+              "value": "={{ $('mensagemFinal').item.json.mensagem }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3056,
+        -848
+      ],
+      "id": "65a63d84-939f-4c4c-9d5f-94d9f7bdddbf",
+      "name": "data_mapping_novo_lead"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensagem }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=# ROLE\nVoce e um classificador de intencoes para o atendimento da Cultura Inglesa. Analise a ultima mensagem do cliente e determine o subagente.\n\n[CONTEXTO]\n- Fase Atual: {{ $json.fase_atual }}\n- Historico:\n{{ $json.contexto }}\n\n# REGRAS DE ROTEAMENTO\n\n0. AGENDAMENTO PRIORITARIO: se Fase Atual for 'agendamento', classifique SEMPRE como AGENDAMENTO, independente do conteudo da mensagem. O lead esta no meio de um reagendamento.\n\n1. NEGOCIACAO: se perguntar preco, valor, desconto, bolsa ou forma de pagamento.\n\n2. AGENDAMENTO: se o cliente pedir para REMARCAR O PROPRIO ATENDIMENTO. Ex: 'nao posso falar agora', 'estou ocupado', 'me chama mais tarde', 'continua amanha', 'preciso pensar', 'vamos falar outra hora', 'me liga depois', 'fala comigo amanha'.\n\n3. MATRICULA: se o cliente demonstrar intencao clara de se matricular ou fechar negocio. Ex: 'quero me matricular', 'vou fechar', 'pode fazer minha matricula', 'quero assinar', 'bora fechar', 'quero agora', 'me matricula agora', 'vamos fechar agora'.\n\n4. FLUXO NORMAL: se saudando, informando dados pessoais, escolhendo unidade ou horario de aula, ou respondendo perguntas normalmente — mantenha a fase atual e responda: {{ $json.fase_atual.toUpperCase() }}\n\n*** ATENCAO CRITICA - NAO confundir AGENDAMENTO com horario de AULA ***\nQuando o cliente fala sobre quando quer ESTUDAR (ex: 'quero estudar sabado', 'prefiro a noite', 'aos sabados', 'periodo da tarde') isso e disponibilidade de horario de AULA — faz parte do FLUXO NORMAL. NUNCA classifique como AGENDAMENTO.\n\n*** ATENCAO CRITICA - NAO confundir AGENDAMENTO com MATRICULA ***\n'quero me matricular agora', 'bora fechar', 'pode matricular' = MATRICULA, nao AGENDAMENTO.\n'nao posso agora', 'me chama depois', 'vamos falar outra hora' = AGENDAMENTO, nao MATRICULA.\n\n# SAIDA\nResponda UNICAMENTE uma palavra, sem pontuacao nem explicacao: SONDAGEM, PITCH, NEGOCIACAO, AGENDAMENTO ou MATRICULA."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1952,
+        -1392
+      ],
+      "id": "ed460ede-5b07-4591-a2e5-ae552d566e57",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1952,
+        -1120
+      ],
+      "id": "a081605a-8083-4fd2-b333-3f38795580cc",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "2ZnlLUNzDP1VthYv",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw=($json.text||$json.output||'').toUpperCase();const fases=['NEGOCIACAO','AGENDAMENTO','MATRICULA','SONDAGEM','PITCH'];let d='';for(const f of fases){if(raw.includes(f)){d=f;break;}}if(!d){try{d=($items('data_mapping_lead')[0]?.json?.fase_atual||'sondagem').toUpperCase();}catch(e){d='SONDAGEM';}}return[{json:{text:d}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1744,
+        -1392
+      ],
+      "id": "157ecba7-dbaa-48e1-8180-d2a4741d03f2",
+      "name": "sanitizar_classificacao1"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "SONDAGEM",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "s1"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "s2",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "PITCH",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "s3",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "NEGOCIACAO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "s4",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "MATRICULA",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "s5",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "AGENDAMENTO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 0
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1536,
+        -1440
+      ],
+      "id": "b66ad42f-9498-4ca2-8a36-4216f56ce8bc",
+      "name": "Switch4"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "CdXDa64U0fHSEHH1oUv29",
+          "mode": "list",
+          "cachedResultName": "Sondagem"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "from_id": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.from_id; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.from_id; } })() }}",
+            "mensagem": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.mensagem; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.mensagem || ''; } })() }}",
+            "saudacao_correta": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.saudacao_correta; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.saudacao_correta || ''; } })() }}"
+          },
+          "matchingColumns": [
+            "from_id"
+          ],
+          "schema": [
+            {
+              "id": "from_id",
+              "displayName": "from_id",
+              "required": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "display": true,
+              "type": "string"
+            },
+            {
+              "id": "saudacao_correta",
+              "displayName": "saudacao_correta",
+              "required": false,
+              "display": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -1184,
+        -1600
+      ],
+      "id": "239f6a0b-a7c3-45ca-b9ea-3c1f8f18f053",
+      "name": "Call 'Sondagem'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "-JJ-zV-QGKjLi2E5Q-Bi2",
+          "mode": "list",
+          "cachedResultName": "Pitch"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "from_id": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.from_id; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.from_id; } })() }}",
+            "mensagem": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.mensagem; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.mensagem || ''; } })() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "from_id",
+              "displayName": "from_id",
+              "required": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "display": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -1168,
+        -1440
+      ],
+      "id": "c2d87b38-6181-4464-a74c-add51cee9e9b",
+      "name": "Call 'Pitch'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "pGo3F8A6xdodmMKXJoQhV",
+          "mode": "list",
+          "cachedResultName": "Negociacao"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "from_id": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.from_id; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.from_id; } })() }}",
+            "mensagem": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.mensagem; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.mensagem || ''; } })() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "from_id",
+              "displayName": "from_id",
+              "required": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "display": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -1168,
+        -1248
+      ],
+      "id": "9cb334f3-c9fa-4ae9-8c6d-725bc00a9306",
+      "name": "Call 'Negociacao'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DLSPIp9aEVKDLJDQj1smT",
+          "mode": "list",
+          "cachedResultName": "Matricula"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "from_id": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.from_id; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.from_id; } })() }}",
+            "mensagem": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.mensagem; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.mensagem || ''; } })() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "from_id",
+              "displayName": "from_id",
+              "required": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "display": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -1168,
+        -1072
+      ],
+      "id": "2962ca44-967a-4348-a4b7-060513c34f38",
+      "name": "Call 'Matricula'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "-unQxjz7MExVTGkyd1okZ",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/-unQxjz7MExVTGkyd1okZ",
+          "cachedResultName": "Retorno_mensagem"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "whatsapp": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.from_id; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.from_id; } })() }}",
+            "fase_atual": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.fase_atual; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.fase_atual; } })() }}",
+            "fase_atendimento": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.fase_atual; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.fase_atual; } })() }}",
+            "contexto_resumido": "={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.contexto; } catch(e) { return 'Inicio de conversa'; } })() }}",
+            "mensagem": "=={{ (() => { try { return $items('data_mapping_lead')[0]?.json?.mensagem; } catch(e) { return $items('data_mapping_novo_lead')[0]?.json?.mensagem || ''; } })() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "whatsapp",
+              "displayName": "whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "mensagem",
+              "displayName": "mensagem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fase_atual",
+              "displayName": "fase_atual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "fase_atendimento",
+              "displayName": "fase_atendimento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "contexto_resumido",
+              "displayName": "contexto_resumido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        -1168,
+        -912
+      ],
+      "id": "7eb66c61-8aba-4976-85fa-7e0ccc8e0233",
+      "name": "Call 'Retorno_mensagem'1"
+    },
+    {
+      "parameters": {
+        "jsCode": "let text='';\nconst nodeNames=[\"Call 'Sondagem'\",\"Call 'Pitch'\",\"Call 'Negociacao'\",\"Call 'Matricula'\",\"Call 'Retorno_mensagem'1\"];\nfor(const name of nodeNames){\n  try{\n    const val=$items(name)[0]?.json?.resposta||$items(name)[0]?.json?.output||$items(name)[0]?.json?.mensagem||'';\n    if(val){text=String(val).trim();break;}\n  }catch(e){}\n}\nif(!text)return[{json:{parte:'Desculpe, houve um problema. Pode repetir?'}}];\nfunction split(t,max=150){const parts=[];let cur='';const paras=t.split(/\\n{2,}/);for(const p of paras){const tr=p.trim();if(!tr)continue;if(cur&&(cur+'\\n\\n'+tr).length<=max){cur+='\\n\\n'+tr;continue;}if(cur)parts.push(cur);if(tr.length<=max){cur=tr;continue;}const sents=tr.split(/(?<=[.!?])\\s+/);cur='';for(const s of sents){if((cur+' '+s).trim().length<=max){cur=(cur+' '+s).trim();}else{if(cur)parts.push(cur);cur=s;}}}if(cur)parts.push(cur);return parts.filter(p=>p.trim().length>0);}\nreturn split(text).map(parte=>({json:{parte}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -1600
+      ],
+      "id": "3a799556-b8a9-4bc5-849b-b3cde83eeb92",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        -1600
+      ],
+      "id": "12a75807-bbaf-4946-8174-689dffc8a87f",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 4
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -64,
+        -1584
+      ],
+      "id": "1bd93755-f792-4430-8320-e903713b9b6d",
+      "name": "Wait4",
+      "webhookId": "51e87aff-3835-49f7-a1d2-01dfcfef4dc8"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-go:8080/send/text/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.EVOLUTION_API_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"delay\": 1500,\n  \"number\": \"{{ $('WhatsApp').item.json.body.data.Info.Chat }}\",\n  \"text\": {{ JSON.stringify($json.parte) }}\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        176,
+        -1584
+      ],
+      "id": "65ce0292-1bbe-4d18-a9d5-1a94bfe422e5",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        624,
+        -1584
+      ],
+      "id": "b6899a55-b018-4ca0-8cd4-403ec1e07b05",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "msg_texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "converter_audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "msg_texto": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "converter_audio": {
+      "main": [
+        [
+          {
+            "node": "transcrever_audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "transcrever_audio": {
+      "main": [
+        [
+          {
+            "node": "msg_audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "msg_audio": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "addBuffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "addBuffer": {
+      "main": [
+        [
+          {
+            "node": "getBuffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getBuffer": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "getBuffer4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "getBuffer4": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "deleteBuffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "deleteBuffer": {
+      "main": [
+        [
+          {
+            "node": "mensagemFinal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mensagemFinal": {
+      "main": [
+        [
+          {
+            "node": "Fase_Atual",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fase_Atual": {
+      "main": [
+        [
+          {
+            "node": "Lead Existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Existe?": {
+      "main": [
+        [
+          {
+            "node": "Fase_Atual4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Inserir lead novo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fase_Atual4": {
+      "main": [
+        [
+          {
+            "node": "contexo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Inserir lead novo": {
+      "main": [
+        [
+          {
+            "node": "data_hora4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "contexo": {
+      "main": [
+        [
+          {
+            "node": "data_hora",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_hora": {
+      "main": [
+        [
+          {
+            "node": "data_mapping_lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_hora4": {
+      "main": [
+        [
+          {
+            "node": "data_mapping_novo_lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_mapping_lead": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_mapping_novo_lead": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "sanitizar_classificacao1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sanitizar_classificacao1": {
+      "main": [
+        [
+          {
+            "node": "Switch4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch4": {
+      "main": [
+        [
+          {
+            "node": "Call 'Sondagem'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Pitch'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Negociacao'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Matricula'",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Retorno_mensagem'1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Sondagem'": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Pitch'": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Negociacao'": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Matricula'": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Retorno_mensagem'1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Wait4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait4": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "31f7ed9e-080b-42fd-9072-d2d739517603",
+  "meta": {
+    "instanceId": "356223bedce7f9b4998ba18af3ff2b517ee1c4ed6c25e8004ec95a4c5c5c1f0d"
+  },
+  "id": "FAaPhQj3-ANunvsj9XSN9",
+  "tags": []
+}

@@ -1,0 +1,454 @@
+{
+  "name": "Pitch",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "from_id"
+            },
+            {
+              "name": "mensagem"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "22eaaab0-7a3b-4487-80f3-203c4b6f424e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, from_id, fase_atual, metadados FROM leads WHERE from_id = $1;",
+        "options": {
+          "queryReplacement": "={{ $json.from_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3b6c1ad8-a5e8-41ec-b196-36c2ce56cb7a",
+      "name": "lead",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "=sondagem_{{ $json.from_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        320,
+        768
+      ],
+      "id": "45be366f-886e-4b99-a9bc-fe55db39f630",
+      "name": "contexo",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d28a26fc-f41f-46ac-b05d-9309dac7b49f",
+              "name": "from_id",
+              "value": "={{ $('lead').item.json.from_id }}",
+              "type": "string"
+            },
+            {
+              "id": "dbcdb290-ba0e-45d2-8889-c5e07c48486a",
+              "name": "fase_atual",
+              "value": "={{ $('lead').item.json.fase_atual }}",
+              "type": "string"
+            },
+            {
+              "id": "bb000001-0000-0000-0000-000000000001",
+              "name": "Nome_do_aluno",
+              "value": "={{ $('lead').item.json.metadados?.Nome_do_aluno ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "bb000001-0000-0000-0000-000000000002",
+              "name": "Motivacao",
+              "value": "={{ $('lead').item.json.metadados?.Motivacao ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "bb000001-0000-0000-0000-000000000003",
+              "name": "Nivel_Academico",
+              "value": "={{ $('lead').item.json.metadados?.Nivel_Academico ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "bb000001-0000-0000-0000-000000000004",
+              "name": "Unidade",
+              "value": "={{ $('lead').item.json.metadados?.Unidade ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "bb000001-0000-0000-0000-000000000005",
+              "name": "Disponibilidade_Horario",
+              "value": "={{ $('lead').item.json.metadados?.Disponibilidade_Horario ?? '' }}",
+              "type": "string"
+            },
+            {
+              "id": "bb000001-0000-0000-0000-000000000006",
+              "name": "mensagem",
+              "value": "={{ $('When Executed by Another Workflow').item.json.mensagem }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        752,
+        0
+      ],
+      "id": "373503c3-a9ad-41b9-82d6-464ad1bd708f",
+      "name": "data_mapping"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.mensagem }}",
+        "options": {
+          "systemMessage": "=## PERSONA (ROLE)\nVocê é o \"Alex\", vendedor experiente da Cultura Inglesa. Comunicação sofisticada, empática e focada em Venda Consultiva. Sempre use o nome do cliente nas mensagens de forma natural.\nSeu tom nesta fase é de autoridade pedagógica, entusiasmo e segurança. Você está aqui para mostrar que a Cultura Inglesa é o match perfeito para o futuro do aluno.\n\n- Nome_do_aluno: {{ $json.Nome_do_aluno }}\n- Motivacao/Objetivo: {{ $json.Motivacao }}\n- Nivel_Academico: {{ $json.Nivel_Academico }}\n- Unidade_Escolhida: {{ $json.Unidade }}\n- Disponibilidade_Horario: {{ $json.Disponibilidade_Horario }}\n\n## 🎯 OBJETIVO\nApresentar a solução educacional ideal, validar a escolha do aluno, gerar desejo através dos diferenciais e prepará-lo para o fechamento. Meta de saída: obter validação positiva (um \"SIM, é isso que eu preciso\").\n\n## 🗺️ SEQUÊNCIA DO PITCH (um ponto por mensagem, de forma interativa)\n1. Validação do Perfil: confirme que o objetivo do aluno é 100% alcançável.\n2. Apresentação do Produto: apresente o curso adequado ao Nivel_Academico e Motivacao.\n3. Diferenciais: certificado com validade internacional.\n4. Prova Social: metodologia usada por executivos e estudantes que alcançaram fluência rápida.\n5. Escassez: vagas limitadas na Unidade_Escolhida no horário desejado.\n\n## 🛠️ FERRAMENTAS (PROIBIDO INVENTAR OUTRAS)\n- atualizar_fase: Acione APENAS quando o lead validar o interesse claramente (\"Sim, gostei\", \"Quero saber os valores\", \"É isso que preciso\"). Vai atualizar para NEGOCIACAO.\n- retorno_mensagem: Acione APENAS se o lead disser que está ocupado ou quer continuar depois. Pergunte o horário antes de disparar.\n\n## ⚠️ REGRAS DE OURO\n- PERSONALIZAÇÃO: Se Motivacao for Carreira, foque em reuniões e ambiente corporativo. Se for Viagem, foque em autonomia e segurança internacional.\n- BLINDAGEM DE PREÇO: Não discuta valores aqui. Se perguntar quanto custa, responda: \"Ótima pergunta! Para te passar o valor com as condições especiais de hoje, preciso confirmar a disponibilidade de vaga na sua unidade. Você prefere manhã, tarde ou noite?\"\n- Sempre termine sua fala com uma pergunta interativa de validação.\n\"Perfeito, [Nome]! Ja tenho tudo que preciso pra te mostrar o plano ideal. 🎯\nPosso te apresentar agora como vai funcionar o seu curso?\"\n\nPROIBIDO apos chamar atualizar_fase:\n\nPerguntar horario de ligacao ou retorno\nDizer que vai entrar em contato depois\nFazer qualquer outra pergunta alem da pergunta de transicao acima\nAdicionar qualquer texto alem da frase acima"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "18192ed4-09b6-4ae6-a3e7-e2ace86ccb5d",
+      "name": "PITCH"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        256
+      ],
+      "id": "fb96a19b-39e6-4874-b7c0-d5a0f9edef0c",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "elrp59wUhqssTKXt",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('When Executed by Another Workflow').item.json.from_id }}",
+        "sessionTTL": 86400,
+        "contextWindowLength": 50
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        1216,
+        256
+      ],
+      "id": "dd13df3b-a062-491e-9157-12e879e6e176",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "sl5nnmffMfmqE6OL",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use esta ferramenta APENAS quando o lead validar claramente o interesse no produto. Atualiza a fase para NEGOCIACAO.",
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET fase_atual = $1 WHERE from_id = $2;",
+        "options": {
+          "queryReplacement": "={{ $fromAI('nova_fase', 'Use NEGOCIACAO para avançar o lead', 'string') }}, {{ $('When Executed by Another Workflow').item.json.from_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        1376,
+        256
+      ],
+      "id": "cba5c802-d0cf-46a0-8151-cd9acfac63a4",
+      "name": "atualizar_fase",
+      "credentials": {
+        "postgres": {
+          "id": "LedI9ylHonzVNIm6",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Chame esta ferramenta SOMENTE quando o lead pedir para continuar a conversa em outro dia ou horário. PROIBIDO confirmar agendamento no texto sem chamar esta ferramenta primeiro. Pergunte o melhor dia e horário antes de disparar.",
+        "workflowId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "-unQxjz7MExVTGkyd1okZ",
+          "cachedResultName": "Retorno_mensagem"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "whatsapp": "={{ $('When Executed by Another Workflow').item.json.from_id }}",
+            "fase_atual": "={{ $('data_mapping').item.json.fase_atual }}",
+            "fase_atendimento": "={{ $('data_mapping').item.json.fase_atual }}",
+            "contexto_resumido": "={{ $('data_mapping').item.json.contexto_formatado }}",
+            "status": "pendente",
+            "data_retorno": "={{ $fromAI('data_retorno', 'Data e hora do retorno no formato ISO 8601, fuso UTC-3', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "whatsapp",
+              "displayName": "whatsapp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "data_retorno",
+              "displayName": "data_retorno",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fase_atual",
+              "displayName": "fase_atual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "fase_atendimento",
+              "displayName": "fase_atendimento",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "contexto_resumido",
+              "displayName": "contexto_resumido",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1552,
+        256
+      ],
+      "id": "f9aadcfa-d4d5-436d-97a6-ef48f640fb7c",
+      "name": "retorno_mensagem"
+    },
+    {
+      "parameters": {
+        "jsCode": "const respostaIA = $input.first().json.output;\nreturn [{ json: { resposta: respostaIA } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "770b3240-2b7b-4627-980d-5e1a4f251b6d",
+      "name": "Code in JavaScript1"
+    }
+  ],
+  "pinData": {
+    "When Executed by Another Workflow": [
+      {
+        "json": {
+          "from_id": "5511932510931@s.whatsapp.net",
+          "mensagem": "gostaria sim"
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "lead": {
+      "main": [
+        [
+          {
+            "node": "data_mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "contexo": {
+      "main": [
+        []
+      ]
+    },
+    "data_mapping": {
+      "main": [
+        [
+          {
+            "node": "PITCH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PITCH": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "PITCH",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "PITCH",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "atualizar_fase": {
+      "ai_tool": [
+        [
+          {
+            "node": "PITCH",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "retorno_mensagem": {
+      "ai_tool": [
+        [
+          {
+            "node": "PITCH",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "8988d733-0c09-43ff-bcb4-73bb629f4d1d",
+  "meta": {
+    "instanceId": "356223bedce7f9b4998ba18af3ff2b517ee1c4ed6c25e8004ec95a4c5c5c1f0d"
+  },
+  "id": "-JJ-zV-QGKjLi2E5Q-Bi2",
+  "tags": [
+    {
+      "updatedAt": "2026-05-20T18:38:39.008Z",
+      "createdAt": "2026-05-20T18:38:39.008Z",
+      "id": "j1kcPWDVGOv0IbkV",
+      "name": "CORRIGIDO"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+{
+  "name": "matricula_simulada",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "from_id"
+            },
+            {
+              "name": "Nome_do_aluno"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        288
+      ],
+      "id": "f152074b-155a-4588-91fd-89ee674f5e7f",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ano=new Date().getFullYear();const rand=Math.floor(100000+Math.random()*900000);const protocolo=`CI-${ano}-${rand}`;const nome=$json.Nome_do_aluno||'aluno';const email=$json.Email_do_aluno||'(email nao informado)';const link=`https://pagamento.culturainglesa.com/p/${protocolo}`;return[{json:{status:'pre_matricula_registrada',protocolo,link_pagamento:link,email_destino:email,resultado:`Pre-matricula de ${nome} registrada no sistema. Protocolo: ${protocolo}. Link de pagamento gerado: ${link}. O link deve ser enviado para o e-mail ${email}. A matricula sera CONFIRMADA somente apos a confirmacao do pagamento.`}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        288
+      ],
+      "id": "485ce8af-4b5f-4999-98d7-c5b8200f0473",
+      "name": "gerar_protocolo1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "gerar_protocolo1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "b9a570a2-df24-4e2e-903e-d182ff2d045e",
+  "meta": {
+    "instanceId": "356223bedce7f9b4998ba18af3ff2b517ee1c4ed6c25e8004ec95a4c5c5c1f0d"
+  },
+  "id": "_B324puvw9DUOii40usi8",
+  "tags": []
+}
