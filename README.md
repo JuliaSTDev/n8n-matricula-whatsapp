@@ -174,8 +174,6 @@ Ativar o WF1 (Orquestrador) no n8n. O webhook estará em `/webhook-whasapp`. Con
 ├── estrategia/
 │   └── guia-aaa-js-solucoes.md ← metodologia comercial
 ├── workflows/                  ← JSONs dos workflows n8n (exportar do n8n)
-└── site/
-    └── index.html              ← landing page JS Soluções
 ```
 
 ---
