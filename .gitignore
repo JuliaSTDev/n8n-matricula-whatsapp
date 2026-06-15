@@ -1,0 +1,5 @@
+.env
+chatwoot/
+evolution_data/
+*.log
+node_modules/

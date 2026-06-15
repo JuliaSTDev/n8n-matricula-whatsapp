@@ -1,0 +1,112 @@
+
+services:
+  # Banco de Dados Principal (pgvector para IA)
+  db:
+    image: pgvector/pgvector:pg15
+    container_name: postgres_db
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - evolution-net
+
+  adminer:
+    image: adminer
+    container_name: adminer_gui
+    restart: always
+    ports:
+      - "8888:8080"
+    networks:
+      - evolution-net
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n_app
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - evolution-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - evolution-net
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok_tunnel
+    restart: unless-stopped
+    command:
+      - "http"
+      - "n8n:5678"
+    env_file:
+      - .env
+    depends_on:
+      - n8n
+    networks:
+      - evolution-net
+
+  evolution-go:
+    image: evoapicloud/evolution-go:latest
+    container_name: evolution-go
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file: 
+      - .env
+    volumes:
+      - ./evolution_data:/app/data
+    depends_on:
+      - db
+      - redis
+    networks:
+      - evolution-net
+
+  chatwoot_web:
+    image: chatwoot/chatwoot:latest
+    container_name: chatwoot_web
+    restart: always
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./chatwoot/storage:/app/storage
+    depends_on:
+      - db
+      - redis
+    command: ["bundle", "exec", "rails", "s", "-p", "3000", "-b", "0.0.0.0"]
+    networks:
+      - evolution-net
+
+# --- DECLARAÇÃO GLOBAL DE REDES E VOLUMES ---
+# Estes blocos devem ficar encostados na margem esquerda (coluna 0)
+
+networks:
+  evolution-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  n8n_data:
+  redis_data:
+  evolution_instances:
