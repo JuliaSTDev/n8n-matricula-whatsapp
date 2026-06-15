@@ -1,55 +1,181 @@
-# 🎓 Sistema de Matrícula Inteligente - Cultura Inglesa
+# 🎓 Agente de Matrículas — WhatsApp + IA + n8n
 
-Este projeto apresenta uma arquitetura de **IA Conversacional de Alta Performance** desenvolvida para automatizar o funil de vendas e a conversão de matrículas. O sistema utiliza um modelo de **Orquestração de Agentes Especialistas**, integrando processamento de linguagem natural com sistemas de gestão empresarial (CRM).
-
----
-
-## 🚀 Tecnologias e Ecossistema
-
-* **Orquestração de Fluxo:** [n8n](https://n8n.io/) (Arquitetura orientada a eventos).
-* **Inteligência Artificial:** Groq (Llama 3 / Mixtral) & LangChain (Engenharia de Prompt avançada).
-* **Banco de Dados Relacional:** PostgreSQL (Gestão de leads, estados do funil e persistência).
-* **Memória e Cache:** Redis (Gestão de contexto multi-turno e histórico de chat).
-* **Integração Enterprise:** Conexão nativa com **CRM (Oracle)** para sincronização de dados de vendas.
-* **Linguagens:** JavaScript (Lógica de negócios e tratamento de tempo/fuso) e SQL (Queries dinâmicas).
+> Sistema de atendimento comercial autônomo que conduz leads do primeiro contato até a confirmação de matrícula, 100% via WhatsApp, sem operador humano.
 
 ---
 
-## 🧠 Arquitetura do Sistema: O "Orquestrador de Estados"
+## O que é
 
-Diferente de chatbots tradicionais, este sistema opera como uma **Máquina de Estados**. O núcleo do sistema é um Orquestrador que decide, em tempo real, qual agente deve assumir a interação com base nos dados do banco:
+Um conjunto de 7 workflows n8n que automatiza o funil de vendas de uma escola de idiomas. O personagem "Alex" atende, qualifica, apresenta o produto, negocia e fecha matrícula — 24h por dia, respondendo em menos de 2 segundos.
 
-1.  **Módulo de Identificação:** Verifica via PostgreSQL se o lead é novo ou recorrente.
-2.  **Agentes Especialistas (Tools):**
-    * **Agente de Sondagem:** Realiza a qualificação (BANT), coleta de documentos (CPF) e identificação de necessidades.
-    * **Agente de Pitch:** Desenvolve argumentos de venda baseados na metodologia da escola.
-    * **Agente de Agendamento:** Gerencia follow-ups automáticos caso o lead interrompa o contato.
-3.  **Integração de CRM:** Todos os dados coletados (Nome, CPF, Motivação, Nível de Inglês) são injetados automaticamente no **CRM**, garantindo que a equipe comercial humana tenha visibilidade total do funil.
-
----
-
-## 🛠️ Diferenciais Técnicos (Showcase para ADS)
-
-### 1. Sincronização em Tempo Real com CRM
-O sistema não apenas conversa; ele atua como um braço de entrada de dados. A integração com o CRM elimina o trabalho manual e garante que a "Receita" (Revenue) seja monitorada desde o primeiro "Oi".
-
-### 2. Gestão de Contexto e Fuso Horário
-Implementação de lógica customizada em JS para garantir que a IA respeite o fuso horário brasileiro (Brasília), enviando saudações e agendamentos de retorno precisos.
-
-### 3. Blindagem de Regras de Negócio
-Utilização de prompts estruturados para impedir a progressão no funil sem os requisitos mínimos (ex: proibição de exibição de preços antes da coleta do CPF e bairro de preferência).
+```
+Lead envia "Oi" no WhatsApp
+        │
+        ▼
+  Classificador de Intenção (Groq Llama 4 Scout)
+        │
+   ┌────┴─────────────────────────┐
+   ▼                              ▼
+[Sondagem]  →  [Pitch]  →  [Negociação]  →  [Matrícula]
+   │               │              │
+   └───────────────┴──────────────┘
+            Retorno agendado (WF6)
+```
 
 ---
 
-## 🏗️ Roadmap de Desenvolvimento
+## Stack
 
-- [x] Arquitetura de múltiplos agentes no n8n.
-- [x] Integração de persistência via PostgreSQL e Redis.
-- [x] Conexão com camada de CRM para sincronização de leads.
-- [ ] Implementação de sistema de "Auto-Save" para evitar perda de dados parciais.
-- [ ] Dashboard de análise de taxas de conversão entre fases (Sondagem -> Matrícula).
+| Camada | Tecnologia |
+|--------|-----------|
+| Orquestração | n8n (self-hosted) |
+| LLM — Agentes e Classificador | Groq `meta-llama/llama-4-scout-17b-16e-instruct` |
+| Transcrição de áudio | Google Gemini 2.5 Flash |
+| Banco de dados | PostgreSQL |
+| Memória de conversa | Redis Chat Memory (LangChain) |
+| Buffer anti-debounce | Redis (lista, 15s) |
+| WhatsApp | Evolution API (Docker) |
 
 ---
 
-### 👩‍💻 Desenvolvedora
-**Julia** *Desenvolvedora ADS*
+## Workflows
+
+| # | Nome | Função | Status |
+|---|------|--------|--------|
+| WF1 | Orquestrador | Webhook de entrada, buffer, classificador, roteamento | 🟡 Em testes |
+| WF2 | Sondagem | Qualificação e coleta de dados do lead | 🟡 Em testes |
+| WF3 | Pitch | Apresentação do produto personalizada | 🟡 Em testes |
+| WF4 | Negociação | Valores, condições e forma de pagamento | 🟡 Em testes |
+| WF5 | Matrícula | Confirmação de dados e encerramento | 🟡 Em testes |
+| WF6 | Retorno_mensagem | Agendamento de retorno + scheduler automático | 🟡 Em testes |
+| WF7 | Simulação | Placeholder de integração com CRM/pagamento | 🔴 Não integrado |
+
+---
+
+## Como funciona
+
+### Fluxo principal
+
+1. Lead manda mensagem no WhatsApp → Evolution API dispara webhook para o n8n
+2. Mensagens são bufferizadas por 15s (anti-debounce) e unificadas
+3. Classificador de intenção (Groq) decide qual agente responde
+4. Agente especialista executa e retorna `{ resposta: string }`
+5. Resposta é dividida em partes de ≤ 150 caracteres com 4s de intervalo
+6. Evolution API envia cada parte como mensagem separada
+
+### Cross-phase routing
+
+O classificador pode rotear para qualquer agente independente da fase atual do lead. Ex: lead em Sondagem pergunta o preço → vai direto para Negociação.
+
+### Memória compartilhada
+
+Todos os agentes usam o mesmo Redis Chat Memory (session key = `from_id`). O contexto da conversa é preservado quando o lead muda de agente.
+
+---
+
+## Banco de dados
+
+```
+leads          → dados do lead + fase atual + metadados (JSONB)
+remarcacoes    → agendamentos de retorno com ciclo: aguardando_data → pendente → concluido
+unidades       → unidades/sedes da escola (consultado pelo agente de Sondagem)
+interacoes     → log de retomadas automáticas feitas pelo scheduler
+```
+
+---
+
+## Pré-requisitos
+
+- n8n self-hosted
+- PostgreSQL
+- Redis
+- Evolution API (Docker)
+- Conta Groq (API key)
+- Conta Google AI (API key para Gemini)
+
+---
+
+## Setup
+
+### 1. Banco de dados
+
+Execute as migrations em `infra/schema.sql` (se disponível) ou crie as tabelas manualmente conforme `docs/integracoes/stack.md`.
+
+### 2. Variáveis de ambiente no n8n
+
+| Variável | Uso |
+|----------|-----|
+| `EVOLUTION_API_KEY` | Autenticação na Evolution API |
+| Credential `Postgres account` | Conexão com PostgreSQL |
+| Credential `Redis account` | Conexão com Redis |
+| Credential `Groq account` | LLM para agentes |
+| Credential `Groq account 2` | LLM para classificador |
+| Credential `Google Gemini(PaLM) Api account` | Transcrição de áudio |
+
+> ⚠️ **Nunca commitar credenciais no repositório.** Configure tudo como credentials do n8n ou variáveis de ambiente.
+
+### 3. Importar workflows
+
+Importe os arquivos JSON da pasta `workflows/` na interface do n8n (Settings → Import).
+
+### 4. Tabela `unidades`
+
+Popular a tabela com as unidades reais do cliente antes de ativar em produção:
+
+```sql
+INSERT INTO unidades (nome_exibicao, codigo_ps_unidade)
+VALUES ('Unidade Centro', 'CI-001'), ('Unidade Sul', 'CI-002');
+```
+
+### 5. Ativar webhooks
+
+Ativar o WF1 (Orquestrador) no n8n. O webhook estará em `/webhook-whasapp`. Configurar a Evolution API para enviar eventos de mensagem para essa URL.
+
+---
+
+## Documentação
+
+| Documento | Conteúdo |
+|-----------|----------|
+| [`docs/arquitetura.md`](docs/arquitetura.md) | Arquitetura técnica completa, fluxo de dados, bugs conhecidos |
+| [`docs/fluxos/visao-geral.md`](docs/fluxos/visao-geral.md) | Detalhamento de cada workflow com sequência de nodes |
+| [`docs/ia/agentes.md`](docs/ia/agentes.md) | Especificação completa de cada agente: ferramentas, regras, SQL |
+| [`docs/ia/prompts.md`](docs/ia/prompts.md) | Histórico de todas as versões de prompt + análise de alucinações |
+| [`docs/integracoes/stack.md`](docs/integracoes/stack.md) | Integrações: Evolution API, PostgreSQL, Redis, Groq, Gemini |
+| [`docs/testes/casos.md`](docs/testes/casos.md) | Casos de teste organizados por categoria |
+| [`docs/testes/log.md`](docs/testes/log.md) | Registro de testes executados |
+| [`docs/plano-producao.md`](docs/plano-producao.md) | Checklist e plano para ir a produção |
+| [`docs/decisoes/`](docs/decisoes/) | Registros de decisões arquiteturais (ADRs) |
+
+---
+
+## Estrutura do repositório
+
+```
+.
+├── README.md
+├── docs/
+│   ├── arquitetura.md          ← visão técnica completa
+│   ├── plano-producao.md       ← checklist para ir a produção
+│   ├── decisoes/               ← ADRs (por que cada tecnologia foi escolhida)
+│   │   ├── 001-evolution-api.md
+│   │   ├── 002-llm-groq.md
+│   │   └── 003-gemini-audio.md
+│   ├── fluxos/
+│   │   └── visao-geral.md      ← detalhamento dos 7 workflows
+│   ├── ia/
+│   │   ├── agentes.md          ← especificação dos agentes
+│   │   └── prompts.md          ← versões de prompt + análise
+│   ├── integracoes/
+│   │   └── stack.md            ← APIs, banco, Redis
+│   └── testes/
+│       ├── casos.md            ← cenários de teste
+│       └── log.md              ← registro de execuções
+├── estrategia/
+│   └── guia-aaa-js-solucoes.md ← metodologia comercial
+├── workflows/                  ← JSONs dos workflows n8n (exportar do n8n)
+└── site/
+    └── index.html              ← landing page JS Soluções
+```
+
+---
