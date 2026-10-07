@@ -40,15 +40,15 @@ Lead envia "Oi" no WhatsApp
 
 ## Workflows
 
-| # | Nome | Função | Status |
+| # | Nome | Função |
 |---|------|--------|--------|
-| WF1 | Orquestrador | Webhook de entrada, buffer, classificador, roteamento | 🟡 Em testes |
-| WF2 | Sondagem | Qualificação e coleta de dados do lead | 🟡 Em testes |
-| WF3 | Pitch | Apresentação do produto personalizada | 🟡 Em testes |
-| WF4 | Negociação | Valores, condições e forma de pagamento | 🟡 Em testes |
-| WF5 | Matrícula | Confirmação de dados e encerramento | 🟡 Em testes |
-| WF6 | Retorno_mensagem | Agendamento de retorno + scheduler automático | 🟡 Em testes |
-| WF7 | Simulação | Placeholder de integração com CRM/pagamento | 🔴 Não integrado |
+| WF1 | Orquestrador | Webhook de entrada, buffer, classificador, roteamento 
+| WF2 | Sondagem | Qualificação e coleta de dados do lead
+| WF3 | Pitch | Apresentação do produto personalizada 
+| WF4 | Negociação | Valores, condições e forma de pagamento 
+| WF5 | Matrícula | Confirmação de dados e encerramento 
+| WF6 | Retorno_mensagem | Agendamento de retorno + scheduler automático 
+| WF7 | Simulação | Placeholder de integração com CRM/pagamento
 
 ---
 
